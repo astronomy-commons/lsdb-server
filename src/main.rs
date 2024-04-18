@@ -7,18 +7,17 @@ use polars::io::HiveOptions;
 
 use std::path::PathBuf;
 
-
 async fn catch_all(uri: OriginalUri, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
     let path = uri.0.path().trim_start_matches("/");
     let base_path = PathBuf::from("/storage2/splus");
 
     let file_path = base_path.join(path);
-    let bytes = process_and_return_parquet_file(&file_path.to_str().unwrap(), &params).await.unwrap();
+    let bytes = process_and_return_parquet_file_lazy(&file_path.to_str().unwrap(), &params).await.unwrap();
 
     Bytes::from(bytes)
 }
 
-async fn process_and_return_parquet_file(file_path: &str, params: &HashMap<String, String>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+async fn process_and_return_parquet_file_lazy(file_path: &str, params: &HashMap<String, String>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut args = ScanArgsParquet::default();
     
     args.hive_options = HiveOptions{enabled:false, schema: None};
