@@ -1,5 +1,5 @@
 use axum::{
-    body::Bytes, extract::{OriginalUri, Path, Query, State}, http::StatusCode, response::{IntoResponse, Response}, routing::{any, get}, Router
+    body::Bytes, extract::{OriginalUri, Query}, response::IntoResponse, routing::{any, get}, Router
 };
 use std::collections::HashMap;
 use polars::{lazy::dsl::col, prelude::*};
@@ -7,16 +7,6 @@ use polars::io::HiveOptions;
 
 use std::path::PathBuf;
 
-use memory_stats::memory_stats;
-
-fn usage() {
-    if let Some(usage) = memory_stats() {
-        println!("Current physical memory usage: {}", usage.physical_mem);
-        println!("Current virtual memory usage: {}", usage.virtual_mem);
-    } else {
-        println!("Couldn't get the current memory usage :(");
-    }
-}
 
 async fn catch_all(uri: OriginalUri, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
     let path = uri.0.path().trim_start_matches("/");
