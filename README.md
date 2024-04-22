@@ -1,5 +1,11 @@
 # lsdb-server
 
+![](https://github.com/schwarzam/lsdb-server/actions/workflows/build.yml/badge.svg)
+![](https://github.com/schwarzam/lsdb-server/actions/workflows/codecov.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Schwarzam/lsdb-server/graph/badge.svg?token=WFB32324PK)](https://codecov.io/gh/Schwarzam/lsdb-server)
+
+--
+
 A lightweight, fast and easy to use server for the [lsdb server test branch](https://github.com/Schwarzam/lsdb/tree/server-test).
 
 ---

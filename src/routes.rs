@@ -1,5 +1,5 @@
 use axum::{
-    body::Bytes, extract::{OriginalUri, Query}, response::IntoResponse, Router
+    body::Bytes, extract::{OriginalUri, Query}, response::IntoResponse
 };
 
 use std::collections::HashMap;
