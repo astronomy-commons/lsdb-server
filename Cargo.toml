@@ -2,8 +2,19 @@
 name = "lsdb-server"
 version = "0.1.0"
 edition = "2021"
+authors = [" schwarzam gustavo.b.schwarz@gmail.com "]
+
+include = ["/src", "LICENSE", "README.md"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "lsdb_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lsdb_server"
+path = "src/bin.rs"
 
 [dependencies]
 axum = "0.7.5"

@@ -15,12 +15,6 @@ use polars::{lazy::dsl::col, prelude::*};
 /// - `Ok(Expr)`: A Polars expression if the parsing succeeds.
 /// - `Err(Box<dyn Error>)`: An error if the format is incorrect or parsing fails.
 ///
-/// # Example
-/// ```
-/// let condition_str = "age >= 30";
-/// let expr = parse_condition(condition_str).unwrap();
-/// assert_eq!(expr, col("age").gt_eq(lit(30.0)));
-/// ```
 pub fn parse_condition(condition: &str) -> Result<Expr, Box<dyn std::error::Error>> {
     use regex::Regex;
 

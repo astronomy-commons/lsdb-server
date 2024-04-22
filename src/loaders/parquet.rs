@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use polars::{lazy::dsl::col, prelude::*};
 use polars::io::HiveOptions;
 
-use crate::aux;
+use crate::parser::parser;
 
 pub async fn process_and_return_parquet_file_lazy(
     file_path: &str, 
@@ -27,7 +27,7 @@ pub async fn process_and_return_parquet_file_lazy(
 
     let conditions: Result<Vec<Expr>, _> = 
         queries.iter()
-        .map(|condition: &&str| aux::parse_condition(*condition))
+        .map(|condition: &&str| parser::parse_condition(*condition))
         .collect();
 
     let combined_condition = conditions?.into_iter()
