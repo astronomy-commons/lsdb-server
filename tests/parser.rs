@@ -12,6 +12,6 @@ mod parser {
         assert_eq!(expr, col("dec").lt_eq(lit(-30.3)));
 
         let expr = parse_condition("dec>4").unwrap();
-        assert_eq!(expr, col("dec").gt(lit(4)));
+        assert_eq!(expr, col("dec").gt(lit(4.0)));
     }
 }
