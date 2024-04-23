@@ -1,4 +1,35 @@
 use polars::{lazy::dsl::col, prelude::*};
+use std::collections::HashMap;
+
+/// Parses a list of filter conditions from query parameter of hashmap.
+/// 
+/// # Arguments
+/// 
+/// * `params` - A reference to a HashMap of parameters.
+/// 
+/// # Returns
+/// 
+/// A Polars expression representing the combined filter conditions.
+pub fn parse_querie_from_params(params: &HashMap<String, String>) -> Result<Expr, Box<dyn std::error::Error>> {
+    let mut queries = Vec::new();
+    if let Some(query) = params.get("query") {
+        queries = query.split(",").collect::<Vec<_>>();
+    }
+
+    let conditions: Result<Vec<Expr>, _> = 
+        queries.iter()
+        .map(|condition: &&str| parse_condition(*condition))
+        .collect();
+
+    let combined_condition  = conditions?.into_iter()
+        .reduce(|acc, cond| acc.and(cond))
+        .ok_or(""); // Handle case where no conditions are provided
+
+    match combined_condition {
+        Ok(_) => { Ok(combined_condition.unwrap()) },
+        Err(_) => { Err( "Couldnt parse queries".into() ) },
+    }
+}
 
 /// Parses a filter condition from a string into a Polars expression.
 ///
@@ -14,7 +45,6 @@ use polars::{lazy::dsl::col, prelude::*};
 /// A `Result` containing either:
 /// - `Ok(Expr)`: A Polars expression if the parsing succeeds.
 /// - `Err(Box<dyn Error>)`: An error if the format is incorrect or parsing fails.
-///
 pub fn parse_condition(condition: &str) -> Result<Expr, Box<dyn std::error::Error>> {
     use regex::Regex;
 

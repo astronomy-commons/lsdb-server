@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod parser {
-    use lsdb_server::parser::parser::*;
+    use lsdb_server::parsers::parse_filters::*;
     use polars::{lazy::dsl::col, prelude::*};
 
     #[test]
@@ -13,5 +13,10 @@ mod parser {
 
         let expr = parse_condition("dec>4").unwrap();
         assert_eq!(expr, col("dec").gt(lit(4.0)));
+
+        let expr = parse_condition("dec=4").unwrap();
+        assert_eq!(expr, col("dec").eq(lit(4.0)));
     }
+    
+
 }
