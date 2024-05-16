@@ -10,7 +10,16 @@ A lightweight, fast and easy to use server for the [lsdb server test branch](htt
 
 ---
 
+#### TODO list:
+
+- [ ] Accept lower case column names
+- [ ] Get columns by index
+- [ ] Exclude columns by name
+- [ ] Fix `_hipscat_index` parquet schema
+
 ### Configuring the server
+
+`lsdb-server` works with [lsdb server test branch](https://github.com/Schwarzam/lsdb/tree/server-test) if you have the hips partitioned catalogs in your server. 
 
 Generate the hips using [hipscat-import](https://lsdb.readthedocs.io/en/latest/tutorials/import_catalogs.html). 
 
@@ -48,3 +57,4 @@ server {
 
 ```
 ---
+
