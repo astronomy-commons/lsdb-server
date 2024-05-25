@@ -1,11 +1,10 @@
 
 use std::collections::HashMap;
 
-use polars::{lazy::dsl::col, prelude::*};
+use polars::prelude::*;
 use polars::io::HiveOptions;
+use crate::loaders::parsers::parse_params;
 
-use crate::parsers::helpers;
-use crate::parsers::parse_filters;
 
 pub async fn process_and_return_parquet_file_lazy(
     file_path: &str, 
@@ -13,35 +12,37 @@ pub async fn process_and_return_parquet_file_lazy(
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let mut args = ScanArgsParquet::default();
 
+    // TODO: fix the parquet reader hive_options with _hipscat_index
     args.hive_options = HiveOptions{enabled:false, schema: None};
 
     let lf = LazyFrame::scan_parquet(file_path, args).unwrap();
+    let mut selected_cols = parse_params::parse_columns_from_params(&params).unwrap_or(Vec::new());
+    selected_cols = parse_params::parse_exclude_columns_from_params(&params, &lf).unwrap_or(selected_cols);
 
-    let mut selected_cols = helpers::parse_columns_from_params(&params).unwrap_or(Vec::new());
-    selected_cols = helpers::parse_exclude_columns_from_params(&params, &lf).unwrap_or(selected_cols);
+    //println!("{:?}", &params.get("filters").unwrap());
+    let filters = parse_params::parse_filters_from_params(&params);
 
-    let combined_condition = parse_filters::parse_querie_from_params(&params);
-    
-
+    // HACK: Find a better way to handle each combination of selected params
     let mut df;
-    //In case we have selected columns and a combined condition
-    if combined_condition.is_ok() && selected_cols.len() > 0{
+    //In case we have selected columns and filters
+    if filters.is_ok() && selected_cols.len() > 0{
         df = lf
+            .drop(["_hipscat_index"])
             .select(selected_cols)
             .filter(
                 // only if combined_condition is not empty
-                combined_condition?
+                filters?
             )
             .collect()?;
     }
-    // In case we have only a combined condition
-    else if combined_condition.is_ok() {
+    // In case we have only filters
+    else if filters.is_ok() {
         df = lf
-            //TODO: Remove later
+            //TODO: fix the parquet reader hive_options with _hipscat_index
             .drop(["_hipscat_index"])
             .filter(
                 // only if combined_condition is not empty
-                combined_condition?
+                filters?
             )
             .collect()?;
     }
@@ -51,13 +52,13 @@ pub async fn process_and_return_parquet_file_lazy(
             .select(selected_cols)
             .collect()?;
     }
-    // In case we have no selected columns or combined condition
+    // In case we have no selected columns or filters, return whole dataframe
     else {
-        df = lf.collect()?;
+        df = lf.drop(["_hipscat_index"]).collect()?;
     }
 
     let mut buf = Vec::new();
-    ParquetWriter::new(&mut buf).finish(&mut df)?;
-
+    ParquetWriter::new(&mut buf)
+        .finish(&mut df)?;
     Ok(buf)
 }

@@ -20,7 +20,7 @@ use crate::loaders;
 ///
 /// # Returns
 /// This function returns a byte stream that can be directly used as an HTTP response body.
-pub async fn catch_all(uri: OriginalUri, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+pub async fn entry_route(uri: OriginalUri, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
     let path = uri.0.path().trim_start_matches("/");
     let base_path = PathBuf::from("/storage2/splus");
 
