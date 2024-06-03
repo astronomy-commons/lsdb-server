@@ -16,6 +16,14 @@ pub async fn process_and_return_parquet_file_lazy(
     args.hive_options = HiveOptions{enabled:false, schema: None};
 
     let lf = LazyFrame::scan_parquet(file_path, args).unwrap();
+
+    // Retrieve the schema of the LazyFrame
+    let schema = lf.schema()?;
+    let all_columns: Vec<(String, DataType)> = schema
+        .iter_fields()
+        .map(|field| (field.name().to_string(), field.data_type().clone()))
+        .collect();
+
     let mut selected_cols = parse_params::parse_columns_from_params(&params).unwrap_or(Vec::new());
     selected_cols = parse_params::parse_exclude_columns_from_params(&params, &lf).unwrap_or(selected_cols);
 
@@ -56,6 +64,14 @@ pub async fn process_and_return_parquet_file_lazy(
     else {
         df = lf.drop(["_hipscat_index"]).collect()?;
     }
+
+    for (col, dtype) in &all_columns {
+        if !df.get_column_names().contains(&col.as_str()) {
+            let series = Series::full_null(col, df.height(), &dtype);
+            df.with_column(series)?;
+        }
+    }
+    df = df.select(&all_columns.iter().map(|(col, _)| col.as_str()).collect::<Vec<_>>())?;
 
     let mut buf = Vec::new();
     ParquetWriter::new(&mut buf)
