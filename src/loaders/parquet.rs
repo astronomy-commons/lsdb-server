@@ -28,11 +28,11 @@ pub async fn process_and_return_parquet_file_lazy(
     if filters.is_ok() && selected_cols.len() > 0{
         df = lf
             .drop(["_hipscat_index"])
-            .select(selected_cols)
             .filter(
                 // only if combined_condition is not empty
                 filters?
             )
+            .select(selected_cols)
             .collect()?;
     }
     // In case we have only filters
@@ -62,3 +62,4 @@ pub async fn process_and_return_parquet_file_lazy(
         .finish(&mut df)?;
     Ok(buf)
 }
+

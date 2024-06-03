@@ -1,5 +1,4 @@
 use polars::prelude::*;
-use std::collections::HashMap;
 
 /// Returns the column names of a LazyFrame.
 /// 
