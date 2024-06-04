@@ -80,37 +80,74 @@ pub async fn process_and_return_parquet_file_lazy(
     Ok(buf)
 }
 
+use arrow::array::{ArrayRef, NullArray};
+use arrow::array::{Int32Array, new_null_array};
+use arrow::array::{make_array, ArrayDataBuilder};
+use arrow::record_batch::RecordBatch;
+use futures_util::stream::StreamExt;
 use parquet::arrow::async_reader::ParquetRecordBatchStreamBuilder;
 use parquet::arrow::arrow_reader::ArrowReaderMetadata;
 use parquet::arrow::arrow_writer::ArrowWriter;
-use futures_util::stream::StreamExt;
+use std::error::Error;
+use std::sync::Arc;
+use tokio::fs::File;
+use parquet::file::properties::WriterProperties;
+
 
 pub async fn process_and_return_parquet_file(
     file_path: &str, 
     params: &HashMap<String, String>
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-
+) -> Result<Vec<u8>, Box<dyn Error>> {
     // Open async file containing parquet data
     let std_file = std::fs::File::open(file_path)?;
-    let mut file = tokio::fs::File::from_std(std_file);
+    let mut file = File::from_std(std_file);
     
+    // Parse selected columns from params
+    let selected_cols = parse_params::parse_columns_from_params_to_str(&params).unwrap_or(Vec::new());
+
     // Construct the reader
     let meta = ArrowReaderMetadata::load_async(&mut file, Default::default()).await?;
     let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
         file.try_clone().await?,
         meta.clone(),
-
-    ).with_row_filter(filter).with_batch_size(8192).build()?;
+    )
+    .with_batch_size(8192).build()?;
     
+    let original_metadata = meta.metadata();
+    let metadata_keys = original_metadata.file_metadata().key_value_metadata().unwrap().clone();
+    let original_schema = stream.schema().clone();
+
     let mut buf = Vec::new();
-    let mut writer = ArrowWriter::try_new(&mut buf, stream.schema().clone(), None)?;
+
+    // Set writer properties with the original metadata
+    let writer_properties = WriterProperties::builder()
+        .set_key_value_metadata(Some(metadata_keys))
+        .build();
+
+    let mut writer = ArrowWriter::try_new(&mut buf, original_schema.clone(), Some(writer_properties))?;
     
     // Collect all batches and write them to the buffer
     while let Some(batch) = stream.next().await {
         let batch = batch?;
-        writer.write(&batch)?;
+        
+        let selected_arrays = original_schema.fields().iter()
+            .map(|field| {
+                if let Ok(index) = batch.schema().index_of(field.name()) {
+                    if selected_cols.contains(&field.name().to_string()) {
+                        batch.column(index).clone()
+                    } else {
+                        new_null_array(field.data_type(), batch.num_rows())
+                    }
+                } else {
+                    Arc::new(NullArray::new(batch.num_rows())) as ArrayRef
+                }
+            })
+            .collect::<Vec<_>>();
+        
+        let selected_batch = RecordBatch::try_new(original_schema.clone(), selected_arrays)?;
+        writer.write(&selected_batch)?;
     }
-    
+
     writer.finish()?;
     let _ = writer.close();
     Ok(buf)

@@ -19,6 +19,23 @@ pub fn parse_columns_from_params( params: &HashMap<String, String> ) -> Option<V
     None
 }
 
+/// # Arguments
+/// 
+/// * `params` - A reference to a HashMap of parameters containing 'columns' key.
+/// 
+/// # Returns
+/// 
+/// A vector of Polars with the selected columns.
+pub fn parse_columns_from_params_to_str( params: &HashMap<String, String> ) -> Option<Vec<String>> {
+    // Parse columns from params
+    if let Some(cols) = params.get("columns") {
+        let cols = cols.split(",").collect::<Vec<_>>();
+        let select_cols = cols.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        return Some(select_cols);
+    }
+    None
+}
+
 /// Parses a list of filter conditions from query parameter of hashmap.
 /// 
 /// # Arguments
