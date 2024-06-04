@@ -1,5 +1,6 @@
 
 use std::collections::HashMap;
+use std::os::fd::FromRawFd;
 
 use polars::prelude::*;
 use polars::io::HiveOptions;
@@ -79,3 +80,38 @@ pub async fn process_and_return_parquet_file_lazy(
     Ok(buf)
 }
 
+use parquet::arrow::async_reader::ParquetRecordBatchStreamBuilder;
+use parquet::arrow::arrow_reader::ArrowReaderMetadata;
+use parquet::arrow::arrow_writer::ArrowWriter;
+use futures_util::stream::StreamExt;
+
+pub async fn process_and_return_parquet_file(
+    file_path: &str, 
+    params: &HashMap<String, String>
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+
+    // Open async file containing parquet data
+    let std_file = std::fs::File::open(file_path)?;
+    let mut file = tokio::fs::File::from_std(std_file);
+    
+    // Construct the reader
+    let meta = ArrowReaderMetadata::load_async(&mut file, Default::default()).await?;
+    let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+        file.try_clone().await?,
+        meta.clone(),
+
+    ).with_row_filter(filter).with_batch_size(8192).build()?;
+    
+    let mut buf = Vec::new();
+    let mut writer = ArrowWriter::try_new(&mut buf, stream.schema().clone(), None)?;
+    
+    // Collect all batches and write them to the buffer
+    while let Some(batch) = stream.next().await {
+        let batch = batch?;
+        writer.write(&batch)?;
+    }
+    
+    writer.finish()?;
+    let _ = writer.close();
+    Ok(buf)
+}

@@ -25,7 +25,7 @@ pub async fn entry_route(uri: OriginalUri, Query(params): Query<HashMap<String, 
     let base_path = PathBuf::from("/storage2/splus");
 
     let file_path = base_path.join(path);
-    let bytes = loaders::parquet::process_and_return_parquet_file_lazy(&file_path.to_str().unwrap(), &params).await.unwrap();
+    let bytes = loaders::parquet::process_and_return_parquet_file(&file_path.to_str().unwrap(), &params).await.unwrap();
 
     Bytes::from(bytes)
 }
