@@ -70,9 +70,29 @@ pub async fn process_and_return_parquet_file_lazy(
         if !df.get_column_names().contains(&col.as_str()) {
             let series = Series::full_null(col, df.height(), &dtype);
             df.with_column(series)?;
+            
         }
     }
     df = df.select(&all_columns.iter().map(|(col, _)| col.as_str()).collect::<Vec<_>>())?;
+
+    let col_names = df.get_column_names_owned();
+    for (index, name) in col_names.iter().enumerate() {
+        let col = df.column(&name).unwrap();
+        if col.dtype() == &ArrowDataType::LargeUtf8 {
+            //modifying the column to categorical
+            // modify the schema to be categorica
+            // df.try_apply(name, |s| s.categorical().cloned())?;
+        }
+    }
+    //println!("{:?}", df.schema());
+
+    // Checking if anything changed
+    // for (index, name) in col_names.iter().enumerate() {
+    //     let col = df.column(&name).unwrap();
+    //     if col.dtype() == &ArrowDataType::LargeUtf8 {
+    //         println!("Column in LargeUtf8 {:?}", name);
+    //     }
+    // }
 
     let mut buf = Vec::new();
     ParquetWriter::new(&mut buf)
@@ -80,8 +100,9 @@ pub async fn process_and_return_parquet_file_lazy(
     Ok(buf)
 }
 
-use arrow::array::{ArrayRef, NullArray};
-use arrow::array::{Int32Array, new_null_array};
+
+use arrow::array::{ArrayRef, Float64Array, NullArray};
+use arrow::array::{BooleanArray, Float32Array, new_null_array};
 use arrow::array::{make_array, ArrayDataBuilder};
 use arrow::record_batch::RecordBatch;
 use futures_util::stream::StreamExt;
@@ -92,6 +113,22 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::fs::File;
 use parquet::file::properties::WriterProperties;
+
+fn create_boolean_mask(batch: &RecordBatch, original_schema: &Arc<arrow::datatypes::Schema>) -> arrow::error::Result<Arc<BooleanArray>> {
+    // Extract the "PROB_GAL" column and downcast it to Float32Array
+    let prob_gal = batch.column(original_schema.index_of("PROB_GAL")?);
+    // Downcast to original schema type 
+    let prob_gal = prob_gal.as_any().downcast_ref::<Float64Array>().unwrap();
+    
+    // Create a boolean mask where true is prob_gal > 0.8
+    let mut builder = BooleanArray::builder(prob_gal.len());
+    for value in prob_gal.iter() {
+        builder.append_value(value.map_or(false, |v| v > 0.8));
+    }
+    
+    let filter_mask = builder.finish();
+    Ok(Arc::new(filter_mask))
+}
 
 
 pub async fn process_and_return_parquet_file(
@@ -105,18 +142,21 @@ pub async fn process_and_return_parquet_file(
     // Parse selected columns from params
     let selected_cols = parse_params::parse_columns_from_params_to_str(&params).unwrap_or(Vec::new());
 
-    // Construct the reader
     let meta = ArrowReaderMetadata::load_async(&mut file, Default::default()).await?;
-    let mut stream = ParquetRecordBatchStreamBuilder::new_with_metadata(
+
+    let stream_builder = ParquetRecordBatchStreamBuilder::new_with_metadata(
         file.try_clone().await?,
-        meta.clone(),
-    )
-    .with_batch_size(8192).build()?;
-    
+        meta.clone()
+    );
     let original_metadata = meta.metadata();
     let metadata_keys = original_metadata.file_metadata().key_value_metadata().unwrap().clone();
-    let original_schema = stream.schema().clone();
+    let original_schema = stream_builder.schema().clone();
 
+    // Construct the reader
+    let mut stream = stream_builder
+        .with_batch_size(8192)
+        .build()?;
+    
     let mut buf = Vec::new();
 
     // Set writer properties with the original metadata
@@ -128,12 +168,15 @@ pub async fn process_and_return_parquet_file(
     
     // Collect all batches and write them to the buffer
     while let Some(batch) = stream.next().await {
-        let batch = batch?;
+        let mut batch = batch?;
+
+        //let predicate = arrow::compute::FilterBuilder::new(&batch, &projection)?;
+        batch = arrow::compute::filter_record_batch(&batch, &create_boolean_mask(&batch, &original_schema).unwrap())?;
         
         let selected_arrays = original_schema.fields().iter()
             .map(|field| {
                 if let Ok(index) = batch.schema().index_of(field.name()) {
-                    if selected_cols.contains(&field.name().to_string()) {
+                    if selected_cols.contains(&field.name().to_string()) || &field.name().to_string() == "_hipscat_index" {
                         batch.column(index).clone()
                     } else {
                         new_null_array(field.data_type(), batch.num_rows())
