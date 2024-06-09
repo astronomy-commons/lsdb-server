@@ -10,13 +10,6 @@ A lightweight, fast and easy to use server for the [lsdb server test branch](htt
 
 ---
 
-#### TODO list:
-
-- [ ] Accept lower case column names
-- [ ] Get columns by index
-- [ ] Exclude columns by name
-- [ ] !! Fix `_hipscat_index` parquet schema !!
-
 ### Configuring the server
 
 `lsdb-server` works with [lsdb server test branch](https://github.com/Schwarzam/lsdb/tree/server-test) if you have the hips partitioned catalogs in your server. 
@@ -61,11 +54,4 @@ server {
 ### Parameters
 
 - `columns` : The columns to return in the response. Default is all columns. Default is all columns.
-- `exclude_cols`: The columns to exclude from the response. Default is no columns.
 - `filters`: A list of filters to apply ["r_auto < 18", ...]. Default is no filters.
-
-### Caveats
-
-- The server only works with lsdb while using dtype_backend = "numpy_nullable" 
-
-This is because polars writes strings as LargeStrings or LargeUtf8, which causes issues with the metadata read in lsdb.
