@@ -3,7 +3,6 @@ mod paths;
 #[cfg(test)]
 mod parser {
     use lsdb_server::loaders::parquet;
-    use polars::{lazy::dsl::col, prelude::*};
     use std::collections::HashMap;
 
     use super::*;
@@ -16,12 +15,10 @@ mod parser {
         params.insert("cols".to_string(), "RA,DEC".to_string());
         params.insert("query".to_string(), "RA>=30.1241,DEC<=-30.3".to_string());
 
-        let result = parquet::process_and_return_parquet_file_lazy(
+        let result = parquet::parquet::process_and_return_parquet_file(
             file_path.to_str().unwrap(), 
             &params
         ).await;
-
-        
         // Add assertions here to verify the result
     }
     
