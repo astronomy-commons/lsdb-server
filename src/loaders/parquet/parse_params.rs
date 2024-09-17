@@ -35,7 +35,7 @@ pub fn parse_filters(params: &HashMap<String, String>) -> Option<Vec<(&str, &str
         return None
     }
 
-    let re = Regex::new(r"([1-9a-zA-Z_]+)([!<>=]+)([-+]?[0-9]*\.?[0-9]*)").unwrap();
+    let re = Regex::new(r"([0-9a-zA-Z_]+)([!<>=]+)([-+]?[0-9]*\.?[0-9]*)").unwrap();
     let mut filter_vec = Vec::new();
     for filter in filters {
         let f_vec = re.captures(filter).unwrap();
