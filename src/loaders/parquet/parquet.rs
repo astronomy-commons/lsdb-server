@@ -101,7 +101,7 @@ pub async fn process_and_return_parquet_file(
         let selected_arrays = original_schema.fields().iter()
             .map(|field| {
                 if let Ok(index) = batch.schema().index_of(field.name()) {
-                    if columns.contains(&field.name().to_string()) || &field.name().to_string() == "_hipscat_index" {
+                    if columns.contains(&field.name().to_string()) || field.name().to_string().contains("_healpix") {
                         batch.column(index).clone()
                     } else {
                         new_null_array(
