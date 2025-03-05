@@ -8,14 +8,39 @@ use regex::Regex;
 /// # Returns
 /// 
 /// A vector of Polars with the selected columns.
-pub fn parse_columns_from_params_to_str( params: &HashMap<String, String> ) -> Option<Vec<String>> {
+pub fn parse_columns_from_params_to_str(params: &HashMap<String, String>) -> Option<Vec<String>> {
     // Parse columns from params
-    if let Some(cols) = params.get("columns") {
-        let cols = cols.split(",").collect::<Vec<_>>();
-        let select_cols = cols.iter().map(|x| x.to_string()).collect::<Vec<_>>();
-        return Some(select_cols);
+    println!("Params: {:?}", params);
+    
+    // Initialize a set of columns to return
+    let mut select_cols = if let Some(cols) = params.get("columns") {
+        cols.split(",").map(|x| x.to_string()).collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    // If filters exist, extract and add filter columns if not already present
+    if let Some(query) = params.get("filters") {
+        let re = Regex::new(r"([0-9a-zA-Z_]+)([!<>=]+)([-+]?[0-9]*\.?[0-9]*)").unwrap();
+        
+        for filter in query.split(",") {
+            if let Some(captures) = re.captures(filter) {
+                let filter_col = captures.get(1).unwrap().as_str();
+                
+                // Add filter column only if it's not already in select_cols
+                if !select_cols.contains(&filter_col.to_string()) {
+                    select_cols.push(filter_col.to_string());
+                }
+            }
+        }
     }
-    None
+
+    // Return Some(select_cols) if not empty, otherwise None
+    if !select_cols.is_empty() {
+        Some(select_cols)
+    } else {
+        None
+    }
 }
 
 /// # Arguments
