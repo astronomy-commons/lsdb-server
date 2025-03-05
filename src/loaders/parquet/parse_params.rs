@@ -10,8 +10,7 @@ use regex::Regex;
 /// A vector of Polars with the selected columns.
 pub fn parse_columns_from_params_to_str(params: &HashMap<String, String>) -> Option<Vec<String>> {
     // Parse columns from params
-    println!("Params: {:?}", params);
-    
+
     // Initialize a set of columns to return
     let mut select_cols = if let Some(cols) = params.get("columns") {
         cols.split(",").map(|x| x.to_string()).collect::<Vec<_>>()
