@@ -1,4 +1,4 @@
-use arrow::array::{Float64Array, Float32Array, Int16Array, Int32Array, Int64Array, Int8Array, BooleanArray};
+use arrow::array::{Float64Array, Float32Array, Int16Array, Int32Array, Int64Array, Int8Array, BooleanArray, Datum};
 use arrow::record_batch::RecordBatch;
 use arrow::array::BooleanBuilder;
 use arrow::datatypes::Schema;
@@ -15,43 +15,48 @@ use std::sync::Arc;
 /// # Returns
 /// 
 /// This function returns an Arrow Result with the boolean mask.
-pub fn create_boolean_mask(batch: &RecordBatch, original_schema: &Arc<Schema>, filters: Vec<(&str, &str, &str)>) -> arrow::error::Result<Arc<BooleanArray>> {
+pub fn create_boolean_mask(batch: &RecordBatch, original_schema: &Arc<Schema>, filters: Vec<Vec<(&str, &str, &str)>>) -> arrow::error::Result<Arc<BooleanArray>> {
     let num_rows = batch.num_rows();
     let mut boolean_builder = BooleanBuilder::new();
-
-    // Initialize all rows as true
-    for _ in 0..num_rows {
-        boolean_builder.append_value(true);
-    }
+    boolean_builder.append_n(num_rows, false);
     let mut boolean_mask = boolean_builder.finish();
+    for conjunction in filters.iter() {
+        let mut conj_boolean_builder = BooleanBuilder::new();
+        conj_boolean_builder.append_n(num_rows, true);
+        let mut conj_boolean_mask = conj_boolean_builder.finish();
+        for filter in conjunction.iter() {
+            let column = batch.column(original_schema.index_of(filter.0).unwrap());
 
-    for filter in filters.iter() {
-        let column = batch.column(original_schema.index_of(filter.0).unwrap());
-
-        if column.data_type() == &arrow::datatypes::DataType::Float32 {
-            let column = column.as_any().downcast_ref::<Float32Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Float64 {
-            let column = column.as_any().downcast_ref::<Float64Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Int16 {
-            let column = column.as_any().downcast_ref::<Int16Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Int32 {
-            let column = column.as_any().downcast_ref::<Int32Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Int64 {
-            let column = column.as_any().downcast_ref::<Int64Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Int8 {
-            let column = column.as_any().downcast_ref::<Int8Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?;
-        } else if column.data_type() == &arrow::datatypes::DataType::Boolean {
-            let column = column.as_any().downcast_ref::<Int16Array>().unwrap();
-            apply_filter(&mut boolean_mask, column, filter)?; 
-        } else {
-            return Err(arrow::error::ArrowError::NotYetImplemented(format!("Data type {:?} not yet implemented", column.data_type())));
+            if column.data_type() == &arrow::datatypes::DataType::Float32 {
+                let column = column.as_any().downcast_ref::<Float32Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Float64 {
+                let column = column.as_any().downcast_ref::<Float64Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Int16 {
+                let column = column.as_any().downcast_ref::<Int16Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Int32 {
+                let column = column.as_any().downcast_ref::<Int32Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Int64 {
+                let column = column.as_any().downcast_ref::<Int64Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Int8 {
+                let column = column.as_any().downcast_ref::<Int8Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else if column.data_type() == &arrow::datatypes::DataType::Boolean {
+                let column = column.as_any().downcast_ref::<Int16Array>().unwrap();
+                apply_filter(&mut conj_boolean_mask, column, filter)?;
+            } else {
+                return Err(arrow::error::ArrowError::NotYetImplemented(format!("Data type {:?} not yet implemented", column.data_type())));
+            }
         }
+        let mut new_mask = BooleanBuilder::new();
+        for (index, val) in conj_boolean_mask.iter().enumerate(){
+            new_mask.append_value(boolean_mask.value(index) || val.unwrap());
+        }
+        boolean_mask = new_mask.finish();
     }
     Ok(Arc::new(boolean_mask))
 }

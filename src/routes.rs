@@ -16,10 +16,10 @@ pub async fn entry_route(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let path = uri.0.path().trim_start_matches("/");
-    let base_path = PathBuf::from("/storage2/splus");
+    let base_path = PathBuf::from("/Users/smcmu/code/lsdb/tests/");
     let file_path = base_path.join(path);
 
-    // println!("Processing file: {:?}", file_path);
+    println!("Processing file: {:?}", file_path);
 
     // Check for Range header
     if let Some(range_header) = headers.get("Range") {
@@ -62,7 +62,10 @@ pub async fn entry_route(
     // No Range header: Process and return the full Parquet file as before
     match loaders::parquet::parquet::process_and_return_parquet_file(&file_path.to_str().unwrap(), &params).await {
         Ok(bytes) => Bytes::from(bytes).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load file").into_response(),
+        Err(e) => {
+            eprintln!("Application error: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load file").into_response();
+        },
     }
 }
 
