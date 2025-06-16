@@ -16,10 +16,10 @@ pub async fn entry_route(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let path = uri.0.path().trim_start_matches("/");
-    let base_path = PathBuf::from("/Users/smcmu/code/lsdb/tests/");
+    let base_path = PathBuf::from("/storage2/splus");
     let file_path = base_path.join(path);
 
-    println!("Processing file: {:?}", file_path);
+    // println!("Processing file: {:?}", file_path);
 
     // Check for Range header
     if let Some(range_header) = headers.get("Range") {

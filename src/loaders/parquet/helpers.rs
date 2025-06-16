@@ -1,4 +1,4 @@
-use arrow::array::{Float64Array, Float32Array, Int16Array, Int32Array, Int64Array, Int8Array, BooleanArray, Datum};
+use arrow::array::{Float64Array, Float32Array, Int16Array, Int32Array, Int64Array, Int8Array, BooleanArray};
 use arrow::record_batch::RecordBatch;
 use arrow::array::BooleanBuilder;
 use arrow::datatypes::Schema;
