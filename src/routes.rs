@@ -62,7 +62,10 @@ pub async fn entry_route(
     // No Range header: Process and return the full Parquet file as before
     match loaders::parquet::parquet::process_and_return_parquet_file(&file_path.to_str().unwrap(), &params).await {
         Ok(bytes) => Bytes::from(bytes).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load file").into_response(),
+        Err(e) => {
+            eprintln!("Application error: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load file").into_response();
+        },
     }
 }
 
